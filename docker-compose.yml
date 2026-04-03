@@ -1,0 +1,112 @@
+
+services:
+
+  # EUREKA SERVER (Service Registry)
+  eureka:
+    build: ./discovery
+    container_name: discovery
+    ports:
+      - "8761:8761"   # exposed ONLY for browser access (dev purpose)
+    networks:
+      - micro-net
+    healthcheck:
+      test: [ "CMD", "curl", "http://localhost:8761" ]
+      interval: 10s
+      retries: 5
+
+  # GATEWAY SERVICE
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8080:8080"   # public entry point
+    depends_on:
+      eureka:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+
+  # AUTH SERVICE
+  auth:
+    build: ./auth
+    container_name: auth
+    depends_on:
+      - eureka
+      - kafka
+      - postgres
+    networks:
+      - micro-net
+
+  # ACCOUNT SERVICE
+  account:
+    build: ./account
+    container_name: account
+    depends_on:
+      - eureka
+      - kafka
+      - postgres
+    networks:
+      - micro-net
+
+  # POSTGRES DATABASE
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"  # optional (for local DB access)
+    networks:
+      - micro-net
+
+  # KAFKA BROKER (SIMPLIFIED)
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"   # optional (for debugging from host)
+    environment:
+      # Unique broker ID
+      - KAFKA_NODE_ID=1
+
+      # Running in KRaft mode (no Zookeeper)
+      - KAFKA_PROCESS_ROLES=broker,controller
+
+      # Controller quorum (self-managed)
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+
+      # Internal listeners (ONLY)
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+
+      # CRITICAL: must be docker service name
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+      # Log directory
+      - KAFKA_LOG_DIRS=/tmp/kafka-logs
+
+    networks:
+      - micro-net
+
+  # KAFKA UI (OPTIONAL DEBUG TOOL)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8085:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - micro-net
+
+# NETWORK
+networks:
+  micro-net:
