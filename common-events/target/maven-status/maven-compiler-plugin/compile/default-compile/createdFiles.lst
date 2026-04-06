@@ -1,0 +1,5 @@
+com\manu\common\event\AccountCreatedEvent$AccountCreatedEventBuilder.class
+com\manu\common\event\AccountCreatedEvent.class
+com\manu\common\event\BaseEvent.class
+com\manu\common\event\UserCreatedEvent.class
+com\manu\common\event\UserCreatedEvent$UserCreatedEventBuilder.class

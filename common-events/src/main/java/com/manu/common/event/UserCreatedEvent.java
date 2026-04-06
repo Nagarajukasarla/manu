@@ -1,4 +1,10 @@
 package com.manu.common.event;
 
-public class UserCreatedEvent {
-}
+import lombok.Builder;
+
+@Builder
+public record UserCreatedEvent(
+        String userId,
+        String email,
+        String name
+) implements BaseEvent {}
